@@ -3,6 +3,17 @@ https://www.youtube.com/watch?v=2IqsgSyA8BQ&list=PLS5SEs8ZftgULF-lbxy-is9x_7mTMH
 
 https://github.com/OpenZeppelin/openzeppelin-solidity
 
+
+View ICO
+1. Crowdsale
+2. Timed Crowdsale
+3. CappedCrowdsale
+4. Minted Crowdsale
+5. Whitelisted Crowdsale
+6. Refundable Crowdsale
+7. Presale / Public Sale
+8. Token Distribution and Vesting
+
 ..\node_modules\.bin\truffle init
 npm i openzeppelin-solidity
 
