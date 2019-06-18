@@ -75,6 +75,12 @@ module.exports = {
       // network_id: 2111,   // This network is yours, in the cloud.
       // production: true    // Treats this network as if it was a public net. (default: false)
     // }
+
+    development: {
+      host: 'localhost',
+      port: 7545,
+      network_id: '*', // eslint-disable-line camelcase
+    }
   },
 
   // Set default mocha options here, use special reporters etc.
@@ -94,6 +100,10 @@ module.exports = {
       //  },
       //  evmVersion: "byzantium"
       // }
+      optimizer: {
+        enabled: true,
+        runs: 200
+      },
     }
   }
 }

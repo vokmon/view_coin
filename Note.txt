@@ -1,6 +1,16 @@
 Create my own cryptocurrency with openzeppelin
 https://www.youtube.com/watch?v=2IqsgSyA8BQ&list=PLS5SEs8ZftgULF-lbxy-is9x_7mTMHFIN
 
+https://github.com/OpenZeppelin/openzeppelin-solidity
 
 ..\node_modules\.bin\truffle init
 npm i openzeppelin-solidity
+
+add dependencies from https://github.com/OpenZeppelin/openzeppelin-solidity/blob/master/truffle-config.js
+
+..\node_modules\.bin\truffle compile
+..\node_modules\.bin\truffle migrate --reset
+
+..\node_modules\.bin\truffle console
+mtk = await ViewToken.deployed()
+mtk.address
