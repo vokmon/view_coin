@@ -1,0 +1,6 @@
+Create my own cryptocurrency with openzeppelin
+https://www.youtube.com/watch?v=2IqsgSyA8BQ&list=PLS5SEs8ZftgULF-lbxy-is9x_7mTMHFIN
+
+
+..\node_modules\.bin\truffle init
+npm i openzeppelin-solidity
