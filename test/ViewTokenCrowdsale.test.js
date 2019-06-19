@@ -1,4 +1,5 @@
 import ether from './helper/ether';
+import EVMRevert from './helper/EVMRevert';
 import { AssertionError } from 'assert';
 
 const BigNumber = web3.BigNumber;
@@ -29,10 +30,17 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
     // Token crowdsale config
     this.rate = 500; // 500 View tokens for 1 ether
     this.wallet = wallet;
+    this.cap = ether(100); // raise only 100 ethers
+
+    // Investor cap
+    this.investorMinCap = ether(0.002);
+    this.investorHardCap = ether(50);
+
     this.crowdsale = await ViewTokenCrowdsale.new(
       this.rate,
       this.wallet,
-      this.token.address
+      this.token.address,
+      this.cap
     );
 
     // only ViewToken can mint the coin so we
@@ -76,6 +84,59 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
       const purchaser = investor2;
       await this.crowdsale.buyTokens(investor1, {value, from: purchaser})
       .should.be.fulfilled;
+    });
+  });
+
+  describe('capped crowdsale', async function() {
+    it('has the correct hard cap', async function() {
+      const cap = await this.crowdsale.cap();
+      assert(cap, this.cap);
+    });
+  });
+
+  describe('buyTokens()', function() {
+    describe('when the contribution is less than the minimum cap', function() {
+      it('reject the transaction', async function() {
+        const value = this.investorMinCap - 1;
+        await this.crowdsale.buyTokens(investor2, {value, from: investor2})
+        .should.be.rejectedWith(EVMRevert);
+      });
+    });
+
+    describe('when the investor has already met the minimum cap', function() {
+      it('allows the investor to contribute below the minimum cap', async function() {
+
+        // First contribution is valid
+        const value1 = ether(1);
+        await this.crowdsale.buyTokens(investor1, {value: value1, from: investor1});
+
+        // Second contribution is less than investor maximum cap
+        const value2 = ether(1);
+        await this.crowdsale.buyTokens(investor1, {value: value2, from: investor1});
+      });
+    });
+
+    describe('when the total contributions exceed the investor hard cap', function() {
+      it('rejects the transaction', async function() {
+        // First contribution is in valid range
+        const value1 = ether(2);
+        await this.crowdsale.buyTokens(investor1, {value: value1, from: investor1});
+
+        // Second contribution sends total contributions over investor hard cap
+        const value2 = ether(49);
+        await this.crowdsale.buyTokens(investor1, {value: value2, from: investor1})
+        .should.be.rejectedWith(EVMRevert);
+      });
+    });
+
+    describe('when the contribution is within the valid range', function() {
+      it('succeeds and updates the contribution amount', async function(){
+        const value = ether(2);
+        await this.crowdsale.buyTokens(investor2, {value: value, from: investor2}).should.be.fulfilled;
+
+        const contribution = await this.crowdsale.getUserContribution(investor2);
+        assert(contribution, value);
+      });
     });
   });
 });

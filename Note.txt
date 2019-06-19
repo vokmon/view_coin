@@ -21,6 +21,7 @@ add dependencies from https://github.com/OpenZeppelin/openzeppelin-solidity/blob
 
 ..\node_modules\.bin\truffle compile
 ..\node_modules\.bin\truffle migrate --reset
+..\node_modules\.bin\truffle test ./test/ViewTokenCrowdsale.test.js
 
 ..\node_modules\.bin\truffle console
 mtk = await ViewToken.deployed()
