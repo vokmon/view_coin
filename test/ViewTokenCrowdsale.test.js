@@ -12,7 +12,7 @@ require('chai')
 const ViewToken = artifacts.require('ViewToken');
 const ViewTokenCrowdsale = artifacts.require('ViewTokenCrowdsale');
 
-contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
+contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, investor3]) {
 
   beforeEach(async function() {
 
@@ -54,6 +54,10 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
     // only ViewToken can mint the coin so we
     // need to add minter role to crowdsale to mint the coin
     await this.token.addMinter(this.crowdsale.address);
+
+    // add investors to whitelist
+    await this.crowdsale.addAddressesToWhitelist([investor1, investor2]);
+    
 
     // Advance time to crowdsale start (add 1 second)
     await increaseTimeTo(this.openingTime + 1);
@@ -156,5 +160,14 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
         isClosed.should.be.false;
       });
     });
+
+    describe('whiltelisted crowdsale', function(){
+      it('rejected contributions from non-whitelisted investors', async function() {
+        const nonWhitelisted = _; // first account
+        await this.crowdsale.buyTokens(nonWhitelisted, {value: ether(1), from: nonWhitelisted})
+        .should.be.rejectedWith(EVMRevert);
+      });
+    });
+
   });
 });

@@ -4,9 +4,10 @@ import 'openzeppelin-solidity/contracts/crowdsale/Crowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/CappedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol';
+import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistCrowdsale.sol';
 
 
-contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale {
+contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, WhitelistCrowdsale {
   // Minimum investor total contribution - 0.002 Ether
   uint256 public investorMinCap = 20000000000000000;
 
@@ -63,5 +64,18 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale, Time
     */
   function _updatePurchasingState(address _beneficiary, uint256 _weiAmount) internal {
       contributions[_beneficiary] = contributions[_beneficiary].add(_weiAmount);
+  }
+
+  /**
+    * @dev add multiple address to the whitelist
+    * @param _accounts an array of addreses to be added to the whitelist
+    */
+  function addAddressesToWhitelist(address[] memory _accounts)
+    public
+    onlyWhitelistAdmin
+  {
+      for (uint256 account = 0; account < _accounts.length; account++) {
+          addWhitelisted(_accounts[account]);
+      }
   }
 }
