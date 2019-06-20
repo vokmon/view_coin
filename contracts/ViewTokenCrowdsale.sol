@@ -1,13 +1,15 @@
 pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/crowdsale/Crowdsale.sol';
+import 'openzeppelin-solidity/contracts/crowdsale/distribution/RefundableCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/CappedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistCrowdsale.sol';
 
 
-contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale, WhitelistCrowdsale {
+contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
+                              TimedCrowdsale, WhitelistCrowdsale, RefundableCrowdsale {
   // Minimum investor total contribution - 0.002 Ether
   uint256 public investorMinCap = 20000000000000000;
 
@@ -25,12 +27,16 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale, Time
     IERC20 _token,
     uint256 _cap,
     uint256 _openingTime,
-    uint256 _closingTime)
+    uint256 _closingTime,
+    uint256 _goal
+    )
   Crowdsale(_rate, _wallet, _token)
   CappedCrowdsale(_cap)
   TimedCrowdsale(_openingTime, _closingTime)
+  RefundableCrowdsale(_goal)
   public {
-
+    // important!
+    require(_goal <= _cap, 'Require goal is less than or equal to cap!');
   }
 
   /**

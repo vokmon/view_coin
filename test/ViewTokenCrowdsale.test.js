@@ -37,6 +37,7 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
     this.cap = ether(100); // raise only 100 ethers
     this.openingTime = latest + duration.weeks(1); // will be open in one week time
     this.closingTime = this.openingTime + duration.weeks(1); // end in 2 weeks from now
+    this.goal = ether(50);
 
     // Investor cap
     this.investorMinCap = ether(0.002);
@@ -48,7 +49,8 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
       this.token.address,
       this.cap,
       this.openingTime,
-      this.closingTime
+      this.closingTime,
+      this.goal
     );
 
     // only ViewToken can mint the coin so we
@@ -169,5 +171,16 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
       });
     });
 
+    describe('refundable crowdsale', function() {
+      beforeEach(async function() {
+        await this.crowdsale.buyTokens(investor1, {value: ether(1), from: investor1});
+      });
+      describe('during crowdsale', function() {
+        it('prevents the investor from claiming refund', async function() {
+          await this.crowdsale.claimRefund(investor1, {from: investor1})
+          .should.be.rejectedWith(EVMRevert);
+        });
+      });
+    });
   });
 });
