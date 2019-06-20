@@ -3,9 +3,10 @@ pragma solidity ^0.5.0;
 import 'openzeppelin-solidity/contracts/crowdsale/Crowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/CappedCrowdsale.sol';
+import 'openzeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol';
 
 
-contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale {
+contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale, TimedCrowdsale {
   // Minimum investor total contribution - 0.002 Ether
   uint256 public investorMinCap = 20000000000000000;
 
@@ -16,9 +17,17 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale {
   mapping(address => uint256) public contributions;
 
   //  _cap: takes maximum amount of wei accepted
-  constructor(uint256 _rate, address payable _wallet, IERC20 _token, uint256 _cap)
+  // _openingTime, _closingTime are unix time
+  constructor(
+    uint256 _rate,
+    address payable _wallet,
+    IERC20 _token,
+    uint256 _cap,
+    uint256 _openingTime,
+    uint256 _closingTime)
   Crowdsale(_rate, _wallet, _token)
   CappedCrowdsale(_cap)
+  TimedCrowdsale(_openingTime, _closingTime)
   public {
 
   }
@@ -41,8 +50,9 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale {
     super._preValidatePurchase(_beneficiary, _weiAmount);
     uint256 _existingContribution = contributions[_beneficiary];
     uint256 _newContribution = _existingContribution.add(_weiAmount);
-    require (_newContribution >= investorMinCap
-      && _newContribution <= investorHardCap, 'Require wei amount to be greater than min cap and less than hard cap!');
+    require (_newContribution >= investorMinCap &&
+             _newContribution <= investorHardCap,
+             'Require wei amount to be greater than min cap and less than hard cap!');
   }
 
   /**

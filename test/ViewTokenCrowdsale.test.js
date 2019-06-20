@@ -1,6 +1,7 @@
 import ether from './helper/ether';
 import EVMRevert from './helper/EVMRevert';
-import { AssertionError } from 'assert';
+import {increaseTime, duration, increaseTimeTo} from './helper/increaseTime';
+import latestTime from './helper/latestTime';
 
 const BigNumber = web3.BigNumber;
 require('chai')
@@ -18,6 +19,9 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
     // this.token = await ViewToken.deployed();
     // this.crowdsale = await ViewTokenCrowdsale.deployed();
 
+
+    const latest = await latestTime();
+
     // Token config
     this.name = 'View';
     this.symbol = 'VTK';
@@ -31,6 +35,8 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
     this.rate = 500; // 500 View tokens for 1 ether
     this.wallet = wallet;
     this.cap = ether(100); // raise only 100 ethers
+    this.openingTime = latest + duration.weeks(1); // will be open in one week time
+    this.closingTime = this.openingTime + duration.weeks(1); // end in 2 weeks from now
 
     // Investor cap
     this.investorMinCap = ether(0.002);
@@ -40,12 +46,17 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
       this.rate,
       this.wallet,
       this.token.address,
-      this.cap
+      this.cap,
+      this.openingTime,
+      this.closingTime
     );
 
     // only ViewToken can mint the coin so we
     // need to add minter role to crowdsale to mint the coin
     await this.token.addMinter(this.crowdsale.address);
+
+    // Advance time to crowdsale start (add 1 second)
+    await increaseTimeTo(this.openingTime + 1);
   });
 
   describe('crowdsale', function() {
@@ -136,6 +147,13 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2]) {
 
         const contribution = await this.crowdsale.getUserContribution(investor2);
         assert(contribution, value);
+      });
+    });
+
+    describe('timed crowdsale', function(){
+      it('is open', async function() {
+        const isClosed = await this.crowdsale.hasClosed();
+        isClosed.should.be.false;
       });
     });
   });
