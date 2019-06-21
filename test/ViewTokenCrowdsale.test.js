@@ -43,6 +43,12 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
     this.investorMinCap = ether(0.002);
     this.investorHardCap = ether(50);
 
+    // stages
+    this.preIcoStage = 0;
+    this.preIcoRate = 500;
+    this.icoStage = 1;
+    this.icoRate = 250;
+
     this.crowdsale = await ViewTokenCrowdsale.new(
       this.rate,
       this.wallet,
@@ -180,6 +186,76 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
           await this.crowdsale.claimRefund(investor1, {from: investor1})
           .should.be.rejectedWith(EVMRevert);
         });
+      });
+
+      describe('when the crowdsale stage is PreICO', function() {
+        beforeEach(async function() {
+          await this.crowdsale.buyTokens(investor1, {value: ether(1), from: investor1});
+        });
+
+        it('forwards funds to the wallet', async function() {
+          const balance = await web3.eth.getBalance(this.wallet);
+          assert(balance > ether(100));
+        });
+      });
+
+      describe('when the crowdsale stage is ICO', function() {
+        beforeEach(async function() {
+          await this.crowdsale.setCrowdsaleStage(this.icoStage, {from: _});
+          await this.crowdsale.buyTokens(investor1, {value: ether(1.1), from: investor1});
+          
+        });
+
+        it('forwards funds to the refund vault', async function() {
+          const balance = await this.crowdsale.depositsOf(investor1);
+          assert(balance, ether(1.1));
+        });
+      });
+
+      // describe('when the crowdsale stage is finalized', function() {
+      //   beforeEach(async function() {
+      //     await this.crowdsale.setCrowdsaleStage(this.icoStage, {from: _});
+      //     await this.crowdsale.addAddressesToWhitelist([investor3]);
+      //     await this.crowdsale.buyTokens(investor3, {value: ether(1.1), from: investor3});
+      //     // Advance time to crowdsale start (add 1 second)
+      //     await increaseTimeTo(this.openingTime + 704800);
+      //     await this.crowdsale.finalize();
+      //   });
+
+      //   it('forwards funds then claim the refund', async function() {
+      //     const balance = await this.crowdsale.depositsOf(investor3);
+      //     console.log(balance.toString());
+
+      //     await this.crowdsale.claimRefund(investor3);
+      //     const balance2 = await this.crowdsale.depositsOf(investor3);
+      //     console.log(balance2.toString());
+      //   });
+      // });
+    });
+
+    describe('crowdsale stages', function() {
+      it('it starts in PreICO', async function() {
+        const stage = await this.crowdsale.stage();
+        stage.toNumber().should.equal(this.preIcoStage);
+      });
+
+      it('starts at the openning (deployed) PreIco rate', async function() {
+        const rate = await this.crowdsale.rate();
+        rate.toNumber().should.be.equal(this.preIcoRate);
+      });
+
+      it('allows admin to update the stage and rate', async function() {
+        await this.crowdsale.setCrowdsaleStage(this.icoStage, {from: _});
+        const stage = await this.crowdsale.stage();
+        stage.toNumber().should.equal(this.icoStage);
+
+        const rate = await this.crowdsale.rate();
+        rate.toNumber().should.be.equal(this.icoRate);
+
+      });
+      it('does not allow not admin to update the stage', async function() {
+        await this.crowdsale.setCrowdsaleStage(this.icoStage, {from: investor1})
+        .should.be.rejectedWith(EVMRevert);
       });
     });
   });

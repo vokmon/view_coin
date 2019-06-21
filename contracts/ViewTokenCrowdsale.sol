@@ -1,15 +1,17 @@
 pragma solidity ^0.5.0;
 
 import 'openzeppelin-solidity/contracts/crowdsale/Crowdsale.sol';
-import 'openzeppelin-solidity/contracts/crowdsale/distribution/RefundableCrowdsale.sol';
+// import 'openzeppelin-solidity/contracts/crowdsale/distribution/RefundableCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/emission/MintedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/CappedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistCrowdsale.sol';
+import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
+import './override/ViewRefundableCrowdsale.sol';
 
 
 contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
-                              TimedCrowdsale, WhitelistCrowdsale, RefundableCrowdsale {
+                              TimedCrowdsale, WhitelistCrowdsale, /*RefundableCrowdsale*/ViewRefundableCrowdsale, Ownable {
   // Minimum investor total contribution - 0.002 Ether
   uint256 public investorMinCap = 20000000000000000;
 
@@ -18,6 +20,11 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
 
   // Kepp track of contribution for each investor
   mapping(address => uint256) public contributions;
+
+  // Crowdsale Stages
+  enum CrowdsaleStage { PreICO, ICO }
+  // Default to presale stage
+  CrowdsaleStage public stage = CrowdsaleStage.PreICO;
 
   //  _cap: takes maximum amount of wei accepted
   // _openingTime, _closingTime are unix time
@@ -33,7 +40,7 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
   Crowdsale(_rate, _wallet, _token)
   CappedCrowdsale(_cap)
   TimedCrowdsale(_openingTime, _closingTime)
-  RefundableCrowdsale(_goal)
+  ViewRefundableCrowdsale(_goal)
   public {
     // important!
     require(_goal <= _cap, 'Require goal is less than or equal to cap!');
@@ -84,4 +91,52 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
           addWhitelisted(_accounts[account]);
       }
   }
+
+  /**
+    * @dev Allows admin to update the crowdsale stage
+    * @param _stage Crowdsale stage
+    */
+  function setCrowdsaleStage(uint _stage) public onlyOwner {
+    if(uint(CrowdsaleStage.PreICO) == _stage) {
+      stage = CrowdsaleStage.PreICO;
+    }
+    else if (uint(CrowdsaleStage.ICO) == _stage) {
+      stage = CrowdsaleStage.ICO;
+    }
+  }
+
+    /**
+     * @dev Override how to get token rate based on crowdsale stage
+     * @return the number of token units a buyer gets per wei.
+     */
+    function rate() public view returns (uint256) {
+      // Pre sale stage can get more tokens
+      if (stage == CrowdsaleStage.PreICO) {
+        return 500;
+      }
+      else if (stage == CrowdsaleStage.ICO) {
+        return 250;
+      }
+    }
+
+    /**
+     * @dev Override to extend the way in which ether is converted to tokens.
+     * @param weiAmount Value in wei to be converted into tokens
+     * @return Number of tokens that can be purchased with the specified _weiAmount
+     */
+    function _getTokenAmount(uint256 weiAmount) internal view returns (uint256) {
+        return weiAmount.mul(rate());
+    }
+
+    /**
+     * @dev Overrides Crowdsale fund forwarding, sending funds to escrow.
+     */
+    function _forwardFunds() internal {
+      if (stage == CrowdsaleStage.PreICO) {
+        wallet().transfer(msg.value);
+      }
+      else if (stage == CrowdsaleStage.ICO) {
+        super._forwardFunds();
+      }
+    }
 }
