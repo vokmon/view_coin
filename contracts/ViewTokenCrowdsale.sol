@@ -8,6 +8,9 @@ import 'openzeppelin-solidity/contracts/crowdsale/validation/TimedCrowdsale.sol'
 import 'openzeppelin-solidity/contracts/crowdsale/validation/WhitelistCrowdsale.sol';
 import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './override/ViewRefundableCrowdsale.sol';
+// import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
+import './ViewToken.sol';
+
 
 
 contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
@@ -26,12 +29,20 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
   // Default to presale stage
   CrowdsaleStage public stage = CrowdsaleStage.PreICO;
 
+  // Token Distribution
+  uint256 public tokenSalePercentage  = 70;
+  uint256 public foundersPercentage   = 10;
+  uint256 public foundationPercentage = 10;
+  uint256 public parnersPercentage    = 10;
+
+  ViewToken viewToken;
+
   //  _cap: takes maximum amount of wei accepted
   // _openingTime, _closingTime are unix time
   constructor(
     uint256 _rate,
     address payable _wallet,
-    IERC20 _token,
+    ViewToken _token,
     uint256 _cap,
     uint256 _openingTime,
     uint256 _closingTime,
@@ -44,6 +55,7 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
   public {
     // important!
     require(_goal <= _cap, 'Require goal is less than or equal to cap!');
+    viewToken = _token;
   }
 
   /**
@@ -138,5 +150,25 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
       else if (stage == CrowdsaleStage.ICO) {
         super._forwardFunds();
       }
+    }
+
+    /**
+     * @dev Can be overridden to add finalization logic. The overriding function
+     * should call super._finalization() to ensure the chain of finalization is
+     * executed entirely.
+     */
+    function _finalization() internal onlyOwner {
+      if(goalReached()) {
+        // Finish minting the token
+        // remove crowdsale from minter role
+        viewToken.removeMinter(address(this));
+
+        // Unpause the token
+        // Allow people to transfer tokens
+        viewToken.unpause();
+        viewToken.removePauser(address(this));
+        // Fill this in
+      }
+      super._finalization();
     }
 }
