@@ -26,3 +26,18 @@ add dependencies from https://github.com/OpenZeppelin/openzeppelin-solidity/blob
 ..\node_modules\.bin\truffle console
 mtk = await ViewToken.deployed()
 mtk.address
+
+
+update migration file
+๊update truffle-config.js
+Create .env
+go to https://infura.io/ to obtain API key
+create a project in infura
+
+create HDWalletProvider
+truffle console: new HDWalletProvider(
+          process.env.MNEMONIC,
+          `https://ropsten.infura.io/${process.env.INFURA_API_KEY}`
+        )
+get ether from https://faucet.rinkeby.io/
+deploy -> truffle migrate --network ropsten

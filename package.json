@@ -51,6 +51,8 @@
     "solhint": "2.1.0",
     "solidity-coverage": "github:rotcivegaf/solidity-coverage#5875f5b7bc74d447f3312c9c0e9fc7814b482477",
     "solidity-docgen": "github:OpenZeppelin/solidity-docgen#03f42b5e271b1e1c1d0b814b921ecdc086055255",
-    "truffle": "^5.0.22"
+    "truffle": "^5.0.22",
+    "truffle-hdwallet-provider": "1.0.11",
+    "web3-utils": "^1.0.0-beta.55"
   }
 }

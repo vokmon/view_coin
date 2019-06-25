@@ -3683,7 +3683,7 @@
   },
   "networks": {},
   "schemaVersion": "3.0.11",
-  "updatedAt": "2019-06-24T14:10:17.500Z",
+  "updatedAt": "2019-06-25T01:26:33.637Z",
   "devdoc": {
     "details": "Extension of `FinalizableCrowdsale` contract that adds a funding goal, and the possibility of users\r getting a refund if goal is not met.\r  * Deprecated, use `RefundablePostDeliveryCrowdsale` instead. Note that if you allow tokens to be traded before the goal\r is met, then an attack is possible in which the attacker purchases tokens from the crowdsale and when they sees that\r the goal is unlikely to be met, they sell their tokens (possibly at a discount). The attacker will be refunded when\r the crowdsale is finalized, and the users that purchased from them will be left with worthless tokens.\r",
     "methods": {

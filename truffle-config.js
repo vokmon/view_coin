@@ -2,6 +2,8 @@ require('babel-register')({
   ignore: /node_modules\/(?!zeppelin-solidity)/
 });
 require('babel-polyfill');
+require('dotenv').config();
+const HDWalletProvider = require('truffle-hdwallet-provider');
 /**
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
@@ -84,6 +86,17 @@ module.exports = {
       host: 'localhost',
       port: 7545,
       network_id: '*', // eslint-disable-line camelcase
+    },
+    ropsten: {
+      provider: function() {
+        return new HDWalletProvider(
+          process.env.MNEMONIC,
+          `https://ropsten.infura.io/${process.env.INFURA_API_KEY}`
+        )
+      },
+      gas: 5000000,
+      gasPrice: 25000000000,
+      network_id: 3
     }
   },
 
