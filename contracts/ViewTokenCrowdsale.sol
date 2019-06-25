@@ -10,6 +10,7 @@ import 'openzeppelin-solidity/contracts/ownership/Ownable.sol';
 import './override/ViewRefundableCrowdsale.sol';
 // import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
 import './ViewToken.sol';
+import 'openzeppelin-solidity/contracts/token/ERC20/TokenTimelock.sol';
 
 
 
@@ -33,7 +34,17 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
   uint256 public tokenSalePercentage  = 70;
   uint256 public foundersPercentage   = 10;
   uint256 public foundationPercentage = 10;
-  uint256 public parnersPercentage    = 10;
+  uint256 public partnersPercentage    = 10;
+
+  address public foundersFund;
+  address public foundationFund;
+  address public partnersFund;
+
+  // Token time lock
+  uint256 public releaseTime;
+  address public foundersTimelock;
+  address public foundationTimelock;
+  address public partnersTimelock;
 
   ViewToken viewToken;
 
@@ -46,7 +57,11 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
     uint256 _cap,
     uint256 _openingTime,
     uint256 _closingTime,
-    uint256 _goal
+    uint256 _goal,
+    address _foundersAddress,
+    address _foundationAddress,
+    address _partnersAddress,
+    uint256 _releaseTime
     )
   Crowdsale(_rate, _wallet, _token)
   CappedCrowdsale(_cap)
@@ -56,6 +71,12 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
     // important!
     require(_goal <= _cap, 'Require goal is less than or equal to cap!');
     viewToken = _token;
+
+    foundersFund = _foundersAddress;
+    foundationFund = _foundationAddress;
+    partnersFund = _partnersAddress;
+
+    releaseTime = _releaseTime;
   }
 
   /**
@@ -160,6 +181,17 @@ contract ViewTokenCrowdsale is Crowdsale, MintedCrowdsale, CappedCrowdsale,
     function _finalization() internal onlyOwner {
       if(goalReached()) {
         // Finish minting the token
+        uint256 _alreadyMinted = viewToken.totalSupply();
+        uint256 _finalTotalSupply = _alreadyMinted.div(tokenSalePercentage).mul(100);
+
+        foundersTimelock = address(new TokenTimelock(viewToken, foundersFund, releaseTime));
+        foundationTimelock = address(new TokenTimelock(viewToken, foundationFund, releaseTime));
+        partnersTimelock = address(new TokenTimelock(viewToken, partnersFund, releaseTime));
+
+        viewToken.mint(foundersTimelock, _finalTotalSupply.div(foundersPercentage));
+        viewToken.mint(foundationTimelock, _finalTotalSupply.div(foundationPercentage));
+        viewToken.mint(partnersTimelock, _finalTotalSupply.div(partnersPercentage));
+
         // remove crowdsale from minter role
         viewToken.removeMinter(address(this));
 

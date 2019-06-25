@@ -2,6 +2,7 @@ import ether from './helper/ether';
 import EVMRevert from './helper/EVMRevert';
 import {increaseTime, duration, increaseTimeTo} from './helper/increaseTime';
 import latestTime from './helper/latestTime';
+import { timingSafeEqual } from 'crypto';
 
 const BigNumber = web3.BigNumber;
 require('chai')
@@ -11,8 +12,9 @@ require('chai')
 
 const ViewToken = artifacts.require('ViewToken');
 const ViewTokenCrowdsale = artifacts.require('ViewTokenCrowdsale');
+const TokenTimelock = artifacts.require('TokenTimelock');
 
-contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, investor3]) {
+contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, investor3, foundersFund, foundationFund, partnersFund]) {
 
   beforeEach(async function() {
 
@@ -38,6 +40,10 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
     this.openingTime = latest + duration.weeks(1); // will be open in one week time
     this.closingTime = this.openingTime + duration.weeks(1); // end in 2 weeks from now
     this.goal = ether(50);
+    this.fundersFund = foundersFund;
+    this.foundationFund = foundationFund;
+    this.partnersFund = partnersFund;
+    this.releaseTime = this.closingTime + duration.years(1);
 
     // Investor cap
     this.investorMinCap = ether(0.002);
@@ -53,7 +59,7 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
     this.tokenSalePercentage  = 70;
     this.foundersPercentage   = 10;
     this.foundationPercentage = 10;
-    this.parnersPercentage    = 10;
+    this.partnersPercentage    = 10;
 
     this.crowdsale = await ViewTokenCrowdsale.new(
       this.rate,
@@ -62,7 +68,11 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
       this.cap,
       this.openingTime,
       this.closingTime,
-      this.goal
+      this.goal,
+      this.fundersFund,
+      this.foundationFund,
+      this.partnersFund,
+      this.releaseTime
     );
 
     // Pause token
@@ -344,6 +354,95 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
         const paused = await this.token.paused();
         paused.should.be.false;
 
+        await this.token.transfer(investor2, 1, {from: investor2})
+        .should.be.fulfilled;
+
+        let totalSupply = await this.token.totalSupply();
+        totalSupply = totalSupply.toString();
+
+        // Founders
+        const foundersTimelockAddress = await this.crowdsale.foundersTimelock();
+        let foundersTimelockBalance = await this.token.balanceOf(foundersTimelockAddress);
+        foundersTimelockBalance = foundersTimelockBalance.toString();
+        foundersTimelockBalance = foundersTimelockBalance / (10 ** this.decimals);
+
+        // Founders
+        let foundersAmount = totalSupply / this.foundersPercentage;
+        foundersAmount = foundersAmount.toString();
+        foundersAmount = foundersAmount / (10 ** this.decimals); 
+
+        console.log(totalSupply);
+        console.log(foundersAmount);
+        assert.equal(foundersTimelockBalance.toString(), foundersAmount.toString());
+
+        // Foundation
+        const foundationTimelockAddress = await this.crowdsale.foundationTimelock();
+        let foundationTimelockBalance = await this.token.balanceOf(foundationTimelockAddress);
+        foundationTimelockBalance = foundationTimelockBalance.toString();
+        foundationTimelockBalance = foundationTimelockBalance / (10 ** this.decimals);
+
+        let foundationAmount = totalSupply / this.foundationPercentage;
+        foundationAmount = foundationAmount.toString();
+        foundationAmount = foundationAmount / (10 ** this.decimals);
+
+        assert.equal(foundationTimelockBalance.toString(), foundationAmount.toString());
+
+        // Partners
+        const partnersTimelockAddress = await this.crowdsale.partnersTimelock();
+        let partnersTimelockBalance = await this.token.balanceOf(partnersTimelockAddress);
+        partnersTimelockBalance = partnersTimelockBalance.toString();
+        partnersTimelockBalance = partnersTimelockBalance / (10 ** this.decimals);
+
+        let partnersAmount = totalSupply / this.partnersPercentage;
+        partnersAmount = partnersAmount.toString();
+        partnersAmount = partnersAmount / (10 ** this.decimals);
+
+        assert.equal(partnersTimelockBalance.toString(), partnersAmount.toString());
+
+        // Can't withdraw from timelocks
+        const foundersTimelock = await TokenTimelock.at(foundersTimelockAddress);
+        await foundersTimelock.release().should.be.rejectedWith(EVMRevert);
+
+        const foundationTimelock = await TokenTimelock.at(foundationTimelockAddress);
+        await foundationTimelock.release().should.be.rejectedWith(EVMRevert);
+
+        const partnersTimelock = await TokenTimelock.at(partnersTimelockAddress);
+        await partnersTimelock.release().should.be.rejectedWith(EVMRevert);
+
+        const balance = await this.token.balanceOf(foundersFund)
+        console.log(`Founders fund ${balance}`);
+
+        // Fast forwad 1 year
+        await increaseTimeTo(this.releaseTime + 1);
+
+        // Can withdraw now
+        await foundersTimelock.release().should.be.fulfilled;
+        await foundationTimelock.release().should.be.fulfilled;
+        await partnersTimelock.release().should.be.fulfilled;
+
+        // Funds now have balances
+
+        // Founders
+        let foundersBalance = await this.token.balanceOf(foundersFund);
+        foundersBalance = foundersBalance.toString();
+        foundersBalance = foundersBalance / (10 ** this.decimals);
+        assert.equal(foundersTimelockBalance.toString(), foundersAmount.toString());
+        console.log(`Founders fund after one year ${foundersBalance}`);
+
+        // Foundation
+        let foundationBalance = await this.token.balanceOf(this.foundationFund);
+        foundationBalance = foundationBalance.toString();
+        foundationBalance = foundationBalance / (10 ** this.decimals);
+
+        assert.equal(foundationBalance.toString(), foundationAmount.toString());
+
+        // Partners
+        let partnersBalance = await this.token.balanceOf(this.partnersFund);
+        partnersBalance = partnersBalance.toString();
+        partnersBalance = partnersBalance / (10 ** this.decimals);
+
+        assert.equal(partnersBalance.toString(), partnersAmount.toString());
+        
         // Prevents investor from claiming refund
         await this.crowdsale.claimRefund(investor1)
         .should.be.rejectedWith(EVMRevert);
@@ -361,8 +460,8 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
         const foundationPercentage= await this.crowdsale.foundationPercentage();
         foundationPercentage.toNumber().should.be.eq(this.foundationPercentage, 'has correct foundationPercentage');
 
-        const parnersPercentage= await this.crowdsale.parnersPercentage();
-        parnersPercentage.toNumber().should.be.eq(this.parnersPercentage, 'has correct parnersPercentage');
+        const partnersPercentage= await this.crowdsale.partnersPercentage();
+        partnersPercentage.toNumber().should.be.eq(this.partnersPercentage, 'has correct partnersPercentage');
 
       });
 
@@ -370,9 +469,9 @@ contract('ViewTokenCrowdsale', function([_, wallet, investor1, investor2, invest
         const tokenSalePercentage= await this.crowdsale.tokenSalePercentage();
         const foundersPercentage= await this.crowdsale.foundersPercentage();
         const foundationPercentage= await this.crowdsale.foundationPercentage();
-        const parnersPercentage= await this.crowdsale.parnersPercentage();
+        const partnersPercentage= await this.crowdsale.partnersPercentage();
         const total = tokenSalePercentage.toNumber() + foundersPercentage.toNumber() +
-                      foundationPercentage.toNumber() + parnersPercentage.toNumber()
+                      foundationPercentage.toNumber() + partnersPercentage.toNumber()
         total.should.be.equal(100);
       });
     });
